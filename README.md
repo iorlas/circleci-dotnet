@@ -24,5 +24,5 @@ Usage example:
         command: trx2junit TestResults/trx/Result.trx
         when: always
     - store_test_results:
-        path: repo-vaynoe-qa/TestResults
+        path: TestResults
 ```
