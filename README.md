@@ -26,3 +26,7 @@ Usage example:
     - store_test_results:
         path: TestResults
 ```
+
+## Azure - azure
+- Azure CLI is included
+- K8s CLI is included
