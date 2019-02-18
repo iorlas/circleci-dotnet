@@ -4,33 +4,55 @@
 
 FROM microsoft/azure-cli:latest
 
+### Custom 
+# Allow compose to function
+# Source: https://github.com/docker/compose/blob/master/Dockerfile.run
+ENV GLIBC 2.28-r0
+RUN apk update && apk add --no-cache openssl ca-certificates curl libgcc && \
+    curl -fsSL -o /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub && \
+    curl -fsSL -o glibc-$GLIBC.apk https://github.com/sgerrand/alpine-pkg-glibc/releases/download/$GLIBC/glibc-$GLIBC.apk && \
+    apk add --no-cache glibc-$GLIBC.apk && \
+    ln -s /lib/libz.so.1 /usr/glibc-compat/lib/ && \
+    ln -s /lib/libc.musl-x86_64.so.1 /usr/glibc-compat/lib && \
+    ln -s /usr/lib/libgcc_s.so.1 /usr/glibc-compat/lib && \
+    rm /etc/apk/keys/sgerrand.rsa.pub glibc-$GLIBC.apk
+
+# User management
+RUN apk add --update shadow sudo
+
+### End of custom
+
 # make Apt non-interactive
-RUN echo 'APT::Get::Assume-Yes "true";' > /etc/apt/apt.conf.d/90circleci \
-  && echo 'DPkg::Options "--force-confnew";' >> /etc/apt/apt.conf.d/90circleci
+#RUN echo 'APT::Get::Assume-Yes "true";' > /etc/apt/apt.conf.d/90circleci \
+#  && echo 'DPkg::Options "--force-confnew";' >> /etc/apt/apt.conf.d/90circleci
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# man directory is missing in some base images
-# https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=863199
-RUN apt-get update \
-  && mkdir -p /usr/share/man/man1 \
-  && apt-get install -y \
-    git mercurial xvfb apt \
-    locales sudo openssh-client ca-certificates tar gzip parallel \
-    net-tools netcat unzip zip bzip2 gnupg curl wget
+## man directory is missing in some base images
+## https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=863199
+#RUN apt-get update \
+#  && mkdir -p /usr/share/man/man1 \
+#  && apt-get install -y \
+#    git mercurial xvfb apt \
+#    locales sudo openssh-client ca-certificates tar gzip parallel \
+#    net-tools netcat unzip zip bzip2 gnupg curl wget
 
 
 # Set timezone to UTC by default
 RUN ln -sf /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
 # Use unicode
-RUN locale-gen C.UTF-8 || true
-ENV LANG=C.UTF-8
+#RUN locale-gen C.UTF-8 || true
+ENV LANG=C.UTF-8 \
+    LANGUAGE=C.UTF-8 \
+    LC_CTYPE=C.UTF-8 \
+    LC_ALL=C.UTF-8
+RUN apk add --update --no-cache socat curl tzdata findutils
 
 # install jq
 RUN JQ_URL="https://circle-downloads.s3.amazonaws.com/circleci-images/cache/linux-amd64/jq-latest" \
-  && curl --silent --show-error --location --fail --retry 3 --output /usr/bin/jq $JQ_URL \
-  && chmod +x /usr/bin/jq \
+  && curl --silent --show-error --location --fail --retry 3 --output /usr/local/bin/jq $JQ_URL \
+  && chmod +x /usr/local/bin/jq \
   && jq --version
 
 # Install Docker
@@ -70,8 +92,7 @@ RUN DOCKERIZE_URL="https://circle-downloads.s3.amazonaws.com/circleci-images/cac
   && rm -rf /tmp/dockerize-linux-amd64.tar.gz \
   && dockerize --version
 
-RUN groupadd --gid 3434 circleci \
-  && useradd --uid 3434 --gid circleci --shell /bin/bash --create-home circleci \
+RUN adduser -u 3434 -g circleci -s /bin/bash -D circleci \
   && echo 'circleci ALL=NOPASSWD: ALL' >> /etc/sudoers.d/50-circleci \
   && echo 'Defaults    env_keep += "DEBIAN_FRONTEND"' >> /etc/sudoers.d/env_keep
 
