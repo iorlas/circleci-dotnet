@@ -77,6 +77,8 @@ RUN groupadd --gid 3434 circleci \
 
 # BEGIN IMAGE CUSTOMIZATIONS
 
+RUN apt-get install -y make
+
 USER circleci
 ENV PATH="${PATH}:/home/circleci/.dotnet/tools"
 RUN dotnet tool install -g trx2junit
